@@ -71,30 +71,32 @@ def gen_batch_function(data_folder, image_shape):
         :param batch_size: Batch Size
         :return: Batches of training data
         """
-        image_paths = glob(os.path.join(data_folder, 'image_2', '*.png'))
-        label_paths = {
+        image_paths     = glob(os.path.join(data_folder, 'image_2', '*.png'))
+        label_paths     = {
             re.sub(r'_(lane|road)_', '_', os.path.basename(path)): path
             for path in glob(os.path.join(data_folder, 'gt_image_2', '*_road_*.png'))}
         background_color = np.array([255, 0, 0])
 
         random.shuffle(image_paths)
         for batch_i in range(0, len(image_paths), batch_size):
-            images = []
-            gt_images = []
+            images      = []    # input images
+            gt_images   = []    # ground_truth images (i.e correct label)
             for image_file in image_paths[batch_i:batch_i+batch_size]:
-                gt_image_file = label_paths[os.path.basename(image_file)]
+                gt_image_file   = label_paths[os.path.basename(image_file)]
 
-                image = scipy.misc.imresize(scipy.misc.imread(image_file), image_shape)
-                gt_image = scipy.misc.imresize(scipy.misc.imread(gt_image_file), image_shape)
+                image           = scipy.misc.imresize(scipy.misc.imread(image_file), image_shape)
+                gt_image        = scipy.misc.imresize(scipy.misc.imread(gt_image_file), image_shape)
 
-                gt_bg = np.all(gt_image == background_color, axis=2)
-                gt_bg = gt_bg.reshape(*gt_bg.shape, 1)
-                gt_image = np.concatenate((gt_bg, np.invert(gt_bg)), axis=2)
+                # TODO - data augmentation: rotation / translation, etc
+
+                gt_bg           = np.all(gt_image == background_color, axis=2)
+                gt_bg           = gt_bg.reshape(*gt_bg.shape, 1)
+                gt_image        = np.concatenate((gt_bg, np.invert(gt_bg)), axis=2)
 
                 images.append(image)
                 gt_images.append(gt_image)
 
-            yield np.array(images), np.array(gt_images)
+            yield np.array(images), np.array(gt_images)   # input_image, ground_truth_input_image
     return get_batches_fn
 
 
@@ -110,16 +112,15 @@ def gen_test_output(sess, logits, keep_prob, image_pl, data_folder, image_shape)
     :return: Output for for each test image
     """
     for image_file in glob(os.path.join(data_folder, 'image_2', '*.png')):
-        image = scipy.misc.imresize(scipy.misc.imread(image_file), image_shape)
+        image           = scipy.misc.imresize(scipy.misc.imread(image_file), image_shape)
 
-        im_softmax = sess.run(
-            [tf.nn.softmax(logits)],
-            {keep_prob: 1.0, image_pl: [image]})
-        im_softmax = im_softmax[0][:, 1].reshape(image_shape[0], image_shape[1])
-        segmentation = (im_softmax > 0.5).reshape(image_shape[0], image_shape[1], 1)
-        mask = np.dot(segmentation, np.array([[0, 255, 0, 127]]))
-        mask = scipy.misc.toimage(mask, mode="RGBA")
-        street_im = scipy.misc.toimage(image)
+        im_softmax      = sess.run([tf.nn.softmax(logits)],
+                                    {keep_prob: 1.0, image_pl: [image]})
+        im_softmax      = im_softmax[0][:, 1].reshape(image_shape[0], image_shape[1])
+        segmentation    = (im_softmax > 0.5).reshape(image_shape[0], image_shape[1], 1)
+        mask            = np.dot(segmentation, np.array([[0, 255, 0, 127]]))
+        mask            = scipy.misc.toimage(mask, mode="RGBA")
+        street_im       = scipy.misc.toimage(image)
         street_im.paste(mask, box=None, mask=mask)
 
         yield os.path.basename(image_file), np.array(street_im)
