@@ -84,10 +84,26 @@ def gen_batch_function(data_folder, image_shape):
             for image_file in image_paths[batch_i:batch_i+batch_size]:
                 gt_image_file   = label_paths[os.path.basename(image_file)]
 
+                # Resize
                 image           = scipy.misc.imresize(scipy.misc.imread(image_file), image_shape)
                 gt_image        = scipy.misc.imresize(scipy.misc.imread(gt_image_file), image_shape)
 
-                # TODO - data augmentation: rotation / translation, etc
+                #  Data augmentation
+                # Rotation
+                angle           = np.random.uniform(-25,25)
+                image           = scipy.misc.imrotate(image, angle)
+                gt_image        = scipy.misc.imrotate(gt_image, angle)
+
+                # luminance
+                image           = cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_RGB2HLS)
+                image[:,:,1]    = image[:,:,1] * (0.25 + np.random.uniform(0.25, 0.75))
+                image           = cv2.cvtColor(image, cv2.COLOR_HLS2RGB)
+
+                # translation
+                x               = np.random.uniform(-30, 30)
+                y               = np.random.uniform(-30, 30)
+                image           = cv2.warpAffine(image, np.float32([[1,0,x],[0,y,0]]), image_shape)
+                gt_image        = cv2.warpAffine(gt_image, np.float32([[1,0,x],[0,y,0]]), image_shape)
 
                 gt_bg           = np.all(gt_image == background_color, axis=2)
                 gt_bg           = gt_bg.reshape(*gt_bg.shape, 1)
