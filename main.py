@@ -9,12 +9,23 @@ from distutils.version import LooseVersion
 import project_tests as tests
 import time
 
+'''
+
+References:
+
+1. Semantic Segmentation using FCNs: http://jany.st/post/2017-06-25-semantic-image-segmentation-using-fcns.html
+2. Fully Convolutional Nets: TechTalk: http://techtalks.tv/talks/fully-convolutional-networks-for-semantic-segmentation/61606/
+3. Original paper on FCN: https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf
+4. Excellent Guide on Semantic Segmentation: http://blog.qure.ai/notes/semantic-segmentation-deep-learning-review
+
+'''
+
 ## --- Config Parameters ---
 NUM_IMAGES = 290                    # total num of images to process
 KEEP_PROB  = 0.5
 LEARNING_RATE  = 0.001              # will be decayed in training loop
 
-EPOCHS      = 35 
+EPOCHS      = 5 
 BATCH_SIZE  = 4
 SAVE_DIR    = './checkpoint_dir'    # where checkpoint will be saved
 MODEL_NAME  = 'my-model'
@@ -418,3 +429,31 @@ def run():
 
 if __name__ == '__main__':
     run()
+
+
+'''
+
+Pro Tip: Visualizing this VGG16 model using Tensorboard can be extremely useful. 
+Below I provide you with a snippet to convert .pb file into TF summary. 
+After converting it, you can run tensorboard --logdir=. in the same directory to start Tensorboard,
+ and visualize the graph in your browser.
+
+import tensorflow as tf
+from tensorflow.python.platform import gfile
+from tensorflow.core.protobuf import saved_model_pb2
+from tensorflow.python.util import compat
+
+with tf.Session() as sess:
+    model_filename ='saved_model.pb'
+    with gfile.FastGFile(model_filename, 'rb') as f:
+        data = compat.as_bytes(f.read())
+        sm = saved_model_pb2.SavedModel()
+        sm.ParseFromString(data)
+        g_in = tf.import_graph_def(sm.meta_graphs[0].graph_def)
+
+LOGDIR='.'
+train_writer = tf.summary.FileWriter(LOGDIR)
+train_writer.add_graph(sess.graph)
+
+
+'''
